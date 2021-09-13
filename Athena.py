@@ -63,7 +63,7 @@ except FileNotFoundError:
 # user = input("Network Device Login Username: " )
 # secret = getpass()
 user = "matt" #temp testing
-secret ="ciscos" #temp testing
+secret ="cisco" #temp testing
 
 
 
