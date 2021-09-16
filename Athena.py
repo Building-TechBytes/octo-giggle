@@ -12,7 +12,6 @@ from paramiko.ssh_exception import AuthenticationException
 from getpass import getpass
 
 space = " - "
-response = ""
 #log output file name
 currentTime = datetime.now()
 dt_string = currentTime.strftime("%Y-%m-%d-%H-%M-%S")
@@ -34,7 +33,7 @@ def non_matching_elements(interface_base_config_list, interface_from_switch_list
 #get current time
 def  currentTime():
     time = datetime.now()
-    formatedTime = time.strftime("%Y.%m.%d_%H:%M:%S")
+    formatedTime = time.strftime("%Y.%m.%d_%H:%M:%S")#
     return formatedTime
 
 #open file that contains all the switch IPs
@@ -65,8 +64,6 @@ except FileNotFoundError:
 user = "matt" #temp testing
 secret ="cisco" #temp testing
 
-
-
 #for each ip from the file "IP_Address_List_Switches" perform the following actions
 for ip in ip_list:
     switch = {
@@ -77,13 +74,14 @@ for ip in ip_list:
     }
     try:
         net_connect = ConnectHandler(**switch) #connect to the switch
-        hostname = net_connect.send_command('show run | include hostname') #run command on switch
-        print(hostname.upper(), space, ip + space + currentTime())
+        hostname_raw = net_connect.send_command('show run | include hostname') #run command on switch
+        hostname = hostname_raw.replace('hostname', '').strip("\n").strip("\r").strip()
+        print("hostname" + hostname.upper(), space, ip + space + currentTime())
         f = open(logFileName, "a")
-        hostinfo = "\n\n\n" + hostname.upper() + space + ip + space + currentTime() + "\n"
+        hostinfo = hostname.upper() + space + ip + space + currentTime()
         hostinfo_len=len(hostinfo)
-        underlineHostData=("_"*hostinfo_len) + "\n"
-        f.write(hostinfo + underlineHostData)
+        underlineHostData=("_"*hostinfo_len)
+        f.write("\n\n\n" + hostinfo + "\n" + underlineHostData + "\n")
         access_Vlan_Ports = net_connect.send_command('show vlan brief')#run command on switch
         # access_Vlan_Ports_list=re.findall('([T][w|e][1-8]\/[0]\/\d*)' , access_Vlan_Ports) #regex results of the command and put into list # Cisco 9300
         access_Vlan_Ports_list=re.findall('([E][t][0-8]\/\d*)' , access_Vlan_Ports) #Virtual switch regex pattern
@@ -94,14 +92,11 @@ for ip in ip_list:
             non_match = non_matching_elements(interface_base_config_list , interface_from_switch_list)
             if non_match:
                 status = "Failed--> Missing:"
-                interface_config_status = currentTime() + space + interface + space + "Status: " + status + convertToString(non_match) + "\n" #timestamp
-                # interface_config_status = interface + space + "Status" + space + status + convertToString(non_match) + "\n" no time stamp
             else:
                 status = "Passed"
-                interface_config_status = currentTime() + space + interface + space + "Status: " + status + "\n" #timestamp
-                # interface_config_status = interface + space + "Status" + space + status + "\n" #no time stamp
-            print(interface, non_match)
-            f.write(interface_config_status)
+            log = currentTime() + space + hostname + space + interface + space + "Status: " + status + convertToString(non_match) #timestamp
+            print(log)
+            f.write(log + "\n")
         f.close()
         net_connect.disconnect()
     except (AuthenticationException, NetmikoAuthenticationException):
@@ -109,5 +104,4 @@ for ip in ip_list:
         sys.exit()
     except (NetmikoTimeoutException):
         print('\n \nTCP connection to device failed for host ' + ip)
-        # print('\n \nTCP connection to device failed for host ' + ip + '\n \n Common causes of this problem are:\n 1. Incorrect hostname or IP address.\n 2. Wrong TCP port.\n 3. Intermediate firewall blocking access.\n')
         continue
